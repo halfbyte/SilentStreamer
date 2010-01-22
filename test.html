@@ -1,0 +1,90 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title></title>
+    <script type="text/javascript">
+        var bufferPos = 0;
+        var notes = [48, 24, 36, null, 36, 24, 48, 36, null, null, 24, 48, 60, null, 48, null ];
+        var BPM = 100.0;
+
+        var beatFreq = BPM / 60.0
+
+        var patternLengthInSamples = 4 * 44100 / beatFreq;
+        var noteLengthInSamples = patternLengthInSamples / 16;
+        console.log(beatFreq);
+        console.log(patternLengthInSamples);        
+
+        function testConnection() {
+            document.SoundStreamer.well("");
+        }
+
+        function otherDirection(test) {            
+            console.log("called from applet: " + test);
+            return([1,2,3,4]);
+        }
+
+        function noteToFreq(note) {
+            return 440.0 * ( Math.pow(2.0,((note - 69.0) / 12)));
+        }
+        var in1=0, in2=0, in3=0, in4=0;
+        var out1=0, out2=0, out3=0, out4=0;
+
+        function svf(input, fc, res) {
+            var f = fc * 1.16;
+            var fb = res * (1.0 - 0.15 * f * f);
+            input -= out4 * fb;
+            input *= 0.35013 * (f*f)*(f*f);
+            out1 = input + 0.3 * in1 + (1 - f) * out1; // Pole 1
+            in1  = input;
+            out2 = out1 + 0.3 * in2 + (1 - f) * out2; // Pole 2
+            in2  = out1;
+            out3 = out2 + 0.3 * in3 + (1 - f) * out3;  // Pole 3
+            in3  = out2;
+            out4 = out3 + 0.3 * in4 + (1 - f) * out4;  // Pole 4
+            in4  = out3;
+            return out4;
+        }
+
+
+        function generateSound(bufferSize) {
+            var startTime = new Date().getTime();
+           
+            var buffer = "";
+
+           
+            for(var i=0;i<bufferSize;i++) {
+               var posInPattern = (bufferPos + i) % patternLengthInSamples;
+               var noteInPattern = posInPattern / (noteLengthInSamples);
+               var posInNote = (posInPattern % (noteLengthInSamples)) / noteLengthInSamples;
+               var sound = 0;
+               if (notes[Math.floor(noteInPattern)] != null) {
+                   var notePeriod = 44100.0 / noteToFreq(notes[Math.floor(noteInPattern)]);
+                   sound = 1 - ((((i + bufferPos) % notePeriod) / notePeriod) * 2);
+                   sound = svf(sound, 0.2 * (1.0 - posInNote + 0.5), 3.1);
+                   sound *= 1.0 - (posInNote);
+               } else {
+                   sound = 1;
+                   sound = svf(sound, 0.5, 3.1);
+               }
+
+
+               var word = Math.round((sound+1) * (32768 / 3));
+               buffer += String.fromCharCode(word >> 0xFF);
+               buffer += String.fromCharCode(word >> 8);
+            }
+            bufferPos += bufferSize;
+            var endTime = new Date().getTime();
+            // console.log("time: " + (endTime - startTime));
+            return buffer;
+        }
+
+
+    </script>
+</head>
+<body>
+    <h1>Test</h1>
+    <applet id="foo" mayscript name="SoundStreamer" width="400" height="100" code="de.jankrutisch.soundtools.SoundStreamer.class" codebase="out/production/SilentStreamer"></applet>
+    <a href="#" onclick="testConnection();return false">CLICK ME</a>
+</body>
+</html>
